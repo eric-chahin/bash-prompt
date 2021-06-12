@@ -152,29 +152,13 @@ bash_prompt_is_branch1_behind_branch2 () {
   [[ -n "$first_log" ]]
 }
 
-bash_prompt_branch_exists () {
-  # List remote branches           | # Find our branch and exit with 0 or 1 if found/not found
-  git branch --remote 2> /dev/null | grep --quiet "$1"
-}
-
 bash_prompt_parse_git_ahead () {
   # Grab the local and remote branch
   branch="$(bash_prompt_get_git_branch)"
   remote="$(git config --get "branch.${branch}.remote" || echo -n "origin")"
   remote_branch="$remote/$branch"
 
-  # $ git log origin/master..master
-  # commit 4a633f715caf26f6e9495198f89bba20f3402a32
-  # Author: Todd Wolfson <todd@twolfson.com>
-  # Date:   Sun Jul 7 22:12:17 2013 -0700
-  #
-  #     Unsynced commit
-
-  # If the remote branch is behind the local branch
-  # or it has not been merged into origin (remote branch doesn't exist)
-  if (bash_prompt_is_branch1_behind_branch2 "$remote_branch" "$branch" ||
-      ! bash_prompt_branch_exists "$remote_branch"); then
-    # echo our character
+  if (bash_prompt_is_branch1_behind_branch2 "$remote_branch" "$branch"); then
     echo 1
   fi
 }
