@@ -2,7 +2,7 @@
 # bash prompt by eric-chahin, forked from twolfson
 # Originally forked from gf3, https://gist.github.com/gf3/306785
 
-set -uo pipefail
+#set -uo pipefail
 
 # If we are on a colored terminal
 if tput setaf 1 &> /dev/null; then
@@ -83,14 +83,10 @@ fi
 ## DEV: Working unicode symbols can be determined via the following gist
 ##   **WARNING: The following gist has 64k lines and may freeze your browser**
 ##   https://gist.github.com/twolfson/9cc7968eb6ee8b9ad877
-: "${PROMPT_SYNCED_SYMBOL:=''}"
-: "${PROMPT_DIRTY_SYNCED_SYMBOL:="*"}"
-: "${PROMPT_UNPUSHED_SYMBOL:="△"}"
-: "${PROMPT_DIRTY_UNPUSHED_SYMBOL:="▲"}"
-: "${PROMPT_UNPULLED_SYMBOL:="▽"}"
-: "${PROMPT_DIRTY_UNPULLED_SYMBOL:="▼"}"
-: "${PROMPT_UNPUSHED_UNPULLED_SYMBOL:="⬡"}"
-: "${PROMPT_DIRTY_UNPUSHED_UNPULLED_SYMBOL:="⬢"}"
+: "${PROMPT_DIRTY_WORKING_TREE_SYMBOL:="*"}"
+: "${PROMPT_DIRTY_INDEX_SYMBOL:="+"}"
+: "${PROMPT_UNPUSHED_SYMBOL:="↑"}"
+: "${PROMPT_UNPULLED_SYMBOL:="↓"}"
 
 # Set up behavior options
 : "${PROMPT_SHOW_ERROR_ONCE:='1'}"
@@ -196,11 +192,40 @@ bash_prompt_parse_git_behind () {
   fi
 }
 
+function bash_prompt_parse_git_dirty_wt() {
+  git status --porcelain 2>/dev/null | while read -r status file ; do
+    if [[ "$status" != "??" ]]; then
+      working_tree_status=${status:1:2}
+      if [[ -n "${working_tree_status// }" ]]; then
+        echo 1
+        return
+      fi
+    fi
+  done
+}
+
+function get_first_char() {
+  x="$1"
+  echo "${x::1}"
+}
+
+function get_second_char() {
+  x="$1"
+  echo "${x:1:1}"
+}
+
 function bash_prompt_parse_git_dirty() {
-  # If the git status has *any* changes (e.g. dirty), echo our character
-  if [[ -n "$(git status --porcelain 2> /dev/null)" ]]; then
-    echo 1
-  fi
+  git status --porcelain 2>/dev/null | while IFS= read -r line ; do
+    # Avoid untracked files
+    if [[ "${line::2}" != "??" ]]; then
+      # Choose first or second character
+      status=$($1 "$line")
+      if [[ -n "${status// }" ]]; then
+        echo 1
+        return
+      fi
+    fi
+  done
 }
 
 function bash_prompt_is_on_git() {
@@ -208,28 +233,20 @@ function bash_prompt_is_on_git() {
 }
 
 function bash_prompt_get_git_status() {
-  # Grab the git dirty and git behind
-  dirty_branch="$(bash_prompt_parse_git_dirty)"
-  branch_ahead="$(bash_prompt_parse_git_ahead)"
-  branch_behind="$(bash_prompt_parse_git_behind)"
+  if [[ "$(bash_prompt_parse_git_dirty get_second_char)" == 1 ]]; then
+      printf '%s' "$PROMPT_DIRTY_WORKING_TREE_SYMBOL"
+  fi
 
-  # Iterate through all the cases and if it matches, then echo
-  if [[ "$dirty_branch" == 1 && "$branch_ahead" == 1 && "$branch_behind" == 1 ]]; then
-    echo "$PROMPT_DIRTY_UNPUSHED_UNPULLED_SYMBOL"
-  elif [[ "$branch_ahead" == 1 && "$branch_behind" == 1 ]]; then
-    echo "$PROMPT_UNPUSHED_UNPULLED_SYMBOL"
-  elif [[ "$dirty_branch" == 1 && "$branch_ahead" == 1 ]]; then
-    echo "$PROMPT_DIRTY_UNPUSHED_SYMBOL"
-  elif [[ "$branch_ahead" == 1 ]]; then
-    echo "$PROMPT_UNPUSHED_SYMBOL"
-  elif [[ "$dirty_branch" == 1 && "$branch_behind" == 1 ]]; then
-    echo "$PROMPT_DIRTY_UNPULLED_SYMBOL"
-  elif [[ "$branch_behind" == 1 ]]; then
-    echo "$PROMPT_UNPULLED_SYMBOL"
-  elif [[ "$dirty_branch" == 1 ]]; then
-    echo "$PROMPT_DIRTY_SYNCED_SYMBOL"
-  else # clean
-    echo "$PROMPT_SYNCED_SYMBOL"
+  if [[ "$(bash_prompt_parse_git_dirty get_first_char)" == 1 ]]; then
+      printf '%s' "$PROMPT_DIRTY_INDEX_SYMBOL"
+  fi
+
+  if [[ "$(bash_prompt_parse_git_behind)" == 1 ]]; then
+      printf '%s' "$PROMPT_UNPULLED_SYMBOL"
+  fi
+
+  if [[ "$(bash_prompt_parse_git_ahead)" == 1 ]]; then
+      printf '%s' "$PROMPT_UNPUSHED_SYMBOL"
   fi
 }
 
@@ -301,11 +318,20 @@ else
   PROMPT_COMMAND="bash_prompt_command"
 fi
 
+#PS1="\[$bash_prompt_reset\]\
+#\[$PROMPT_USER_COLOR\]\u\[$bash_prompt_reset\] \
+#\[$PROMPT_PREPOSITION_COLOR\]at\[$bash_prompt_reset\] \
+#\[$PROMPT_DEVICE_COLOR\]\h\[$bash_prompt_reset\] \
+#\[$PROMPT_PREPOSITION_COLOR\]in\[$bash_prompt_reset\] \
+#\[$PROMPT_DIR_COLOR\]\w\[$bash_prompt_reset\]\
+#\$( bash_prompt_is_on_git && \
+#  echo -n \" \[$PROMPT_PREPOSITION_COLOR\]on\[$bash_prompt_reset\] \" && \
+#  echo -n \"\[$PROMPT_GIT_STATUS_COLOR\]\$(bash_prompt_get_git_info)\" && \
+#  echo -n \"\[$PROMPT_GIT_PROGRESS_COLOR\]\$(bash_prompt_get_git_progress)\" && \
+#  echo -n \"\[$bash_prompt_reset\]\")\
+#\[\$(bash_prompt_get_symbol_color)\] $bash_prompt_symbol \[$bash_prompt_reset\]"
+
 PS1="\[$bash_prompt_reset\]\
-\[$PROMPT_USER_COLOR\]\u\[$bash_prompt_reset\] \
-\[$PROMPT_PREPOSITION_COLOR\]at\[$bash_prompt_reset\] \
-\[$PROMPT_DEVICE_COLOR\]\h\[$bash_prompt_reset\] \
-\[$PROMPT_PREPOSITION_COLOR\]in\[$bash_prompt_reset\] \
 \[$PROMPT_DIR_COLOR\]\w\[$bash_prompt_reset\]\
 \$( bash_prompt_is_on_git && \
   echo -n \" \[$PROMPT_PREPOSITION_COLOR\]on\[$bash_prompt_reset\] \" && \
