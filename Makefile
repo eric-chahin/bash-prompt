@@ -19,10 +19,11 @@ install-link:
 	@# Run install script
 	./install.bash
 
-	@echo "# twolfson/sexy-bash-prompt installation complete!"
+	@echo "# eric-chahin/bash-prompt installation complete!"
 	exit 0
 
 clean:
+    # TODO: remove all files related to bash-prompt
 	@echo "# Cleaning up test files"
 	-rm test.stderr
 
