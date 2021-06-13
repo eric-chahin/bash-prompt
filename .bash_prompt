@@ -176,26 +176,12 @@ bash_prompt_parse_git_behind () {
   fi
 }
 
-function bash_prompt_parse_git_dirty_wt() {
-  git status --porcelain 2>/dev/null | while read -r status file ; do
-    if [[ "$status" != "??" ]]; then
-      working_tree_status=${status:1:2}
-      if [[ -n "${working_tree_status// }" ]]; then
-        echo 1
-        return
-      fi
-    fi
-  done
-}
-
 function get_first_char() {
-  x="$1"
-  echo "${x::1}"
+  echo "${1::1}"
 }
 
 function get_second_char() {
-  x="$1"
-  echo "${x:1:1}"
+  echo "${1:1:1}"
 }
 
 function bash_prompt_parse_git_dirty() {
